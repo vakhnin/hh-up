@@ -9,5 +9,5 @@ VALUES
   1,
   "access_token1",
   "refresh_token1",
-  CAST("1713859589.3007352" AS Timestamp)
+  CAST("2024-04-14T12:00:00Z" AS Datetime)
   );
