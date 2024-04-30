@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import ydb
 
@@ -49,23 +50,31 @@ def select_tokens(session):
     return {
         'access_token': row.access_token,
         'refresh_token': row.refresh_token,
-        'expires': row.expires,
+        'expires': datetime.fromtimestamp(row.expires).strftime("%m/%d/%Y, %H:%M:%S"),
     }
 
 
 def set_tokens(session, access_token, refresh_token, expires):
     query = f"""
+        DECLARE $access_token AS Utf8;
+        DECLARE $refresh_token AS Utf8;
+        DECLARE $expires AS DateTime;
         REPLACE INTO token_table (id, access_token, refresh_token, expires)
         VALUES
             (
             1,
-            "{access_token}",
-            "{refresh_token}",
-            CAST("{expires}" AS Datetime)
+            $access_token,
+            $refresh_token,
+            $expires
             );
         """
-    print(query)
+    prepared_query = session.prepare(query)
     session.transaction(ydb.SerializableReadWrite()).execute(
-        query,
+        prepared_query,
+        {
+            '$access_token': access_token,
+            '$refresh_token': refresh_token,
+            '$expires': expires,
+        },
         commit_tx=True,
     )
