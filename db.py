@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import ydb
 
@@ -30,3 +31,50 @@ def select_resumes(session):
             'describe': row.describe,
         })
     return result
+
+
+def select_tokens(session):
+    result_sets = session.transaction(ydb.SerializableReadWrite()).execute(
+        """
+        SELECT
+            access_token,
+            refresh_token,
+            expires
+        FROM token_table
+        WHERE id = 1;
+        """,
+        commit_tx=True,
+    )
+
+    row = result_sets[0].rows[0]
+    return {
+        'access_token': row.access_token,
+        'refresh_token': row.refresh_token,
+        'expires': datetime.fromtimestamp(row.expires).strftime("%m/%d/%Y, %H:%M:%S"),
+    }
+
+
+def set_tokens(session, access_token, refresh_token, expires):
+    query = f"""
+        DECLARE $access_token AS Utf8;
+        DECLARE $refresh_token AS Utf8;
+        DECLARE $expires AS DateTime;
+        REPLACE INTO token_table (id, access_token, refresh_token, expires)
+        VALUES
+            (
+            1,
+            $access_token,
+            $refresh_token,
+            $expires
+            );
+        """
+    prepared_query = session.prepare(query)
+    session.transaction(ydb.SerializableReadWrite()).execute(
+        prepared_query,
+        {
+            '$access_token': access_token,
+            '$refresh_token': refresh_token,
+            '$expires': expires,
+        },
+        commit_tx=True,
+    )
